@@ -1,13 +1,30 @@
 /// creates the endpoints when the main program executes
+using Microsoft.OpenApi.Models;
 using MinimalAPI;
 using MinimalAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Version = "v1",
+        Title = "Beers API",
+        Description = "API for managing a list of beers.",
+        TermsOfService = new Uri("https://example.com/terms")
+    });
+});
 
 builder.Services.AddDbContext<PubContext>();    //adds the injection dependency so you dont have to
                                                 //create the pubcontext everytime you make a a MapGet
 var app = builder.Build();
-
+app.UseSwagger();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwaggerUI();
+}
 //used for testing with hardcoded data
 //app.MapGet("/brewery", () => new Repository().GetBreweries());
 //app.MapGet("/brewery/{id}", (int id) =>
@@ -21,7 +38,8 @@ var app = builder.Build();
 
 //uses connected services => db sql server
 //for obtaining the data
-app.MapGet("/beers", (PubContext db) =>  db.Beers.ToList());
+app.MapGet("/beers", (PubContext db) =>  db.Beers.ToList())
+.WithTags("Get all beers");
 
 app.MapPost("/beers",async (PubContext db, Beer beer) =>
 {
@@ -30,7 +48,8 @@ app.MapPost("/beers",async (PubContext db, Beer beer) =>
 
     return
     Results.Created($"beer/{beer.BeerId}",beer);    //return the new data created
-});
+})
+.WithTags("Add beer to list");
 
 app.MapPut("/beers/{id}", async (int id, PubContext db,Beer beerRequest) =>
 {
@@ -43,7 +62,9 @@ app.MapPut("/beers/{id}", async (int id, PubContext db,Beer beerRequest) =>
 
     await db.SaveChangesAsync();
     return Results.NoContent();
-});
+})
+.WithTags("Replace content of a beer");
+
 
 app.MapDelete("/beers/{id}", async (int id, PubContext db) =>
 {
@@ -53,6 +74,8 @@ app.MapDelete("/beers/{id}", async (int id, PubContext db) =>
     db.Beers.Remove(beer);
     await db.SaveChangesAsync();
     return Results.Ok(beer);
-});
+})
+.WithTags("Delete beer");
+
 
 app.Run();
